@@ -1,21 +1,22 @@
 services:
   - type: web
-    name: hireflow-api
+    name: hireflow
     runtime: node
-    rootDir: backend
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
+    plan: free
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev --prefix backend && npm run build --prefix backend && npm ci --include=dev --prefix frontend && VITE_API_BASE_URL=/api/v1 npm run build --prefix frontend
+    startCommand: npm start --prefix backend
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
         value: 22
+      - key: SERVE_FRONTEND
+        value: 'true'
       - key: MONGOMS_DISABLE_POSTINSTALL
         value: '1'
       - key: MONGODB_URI
-        sync: false
-      - key: CLIENT_URL
         sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
@@ -23,13 +24,9 @@ services:
         generateValue: true
       - key: RESUME_STORAGE_PROVIDER
         value: gridfs
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        value: '587'
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
         sync: false

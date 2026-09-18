@@ -1,5 +1,10 @@
 # HireFlow
 
+[![CI](https://github.com/omwani2005/HireFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/omwani2005/HireFlow/actions/workflows/ci.yml)
+[Deploy the full app on Render](https://render.com/deploy?repo=https://github.com/omwani2005/HireFlow)
+
+The default blueprint serves the frontend and API from one Render origin. See [DEPLOYMENT.md](DEPLOYMENT.md) for required database and email settings.
+
 HireFlow is a production-oriented MERN applicant-tracking system with secure multi-device sessions, candidate and recruiter workflows, tenant isolation, explainable talent matching, notifications, analytics, and focused administration.
 
 ## Features
@@ -19,7 +24,7 @@ HireFlow is a production-oriented MERN applicant-tracking system with secure mul
 
 - Frontend: React 18, Vite, TypeScript, Tailwind CSS, Zustand, Axios, React Router.
 - Backend: Node.js, Express, TypeScript, MongoDB/Mongoose, Zod, JWT, bcrypt, Multer, PDF Parse.
-- Deployment: Vercel frontend, Render-compatible backend blueprint, MongoDB Atlas/GridFS.
+- Deployment: Render frontend + API on one origin, MongoDB Atlas/GridFS; optional separate Vercel frontend.
 
 ## Local setup
 
@@ -73,12 +78,13 @@ npm.cmd run build
 
 `npm test` provisions and removes an isolated local MongoDB replica set automatically; it never uses the application database. The first run downloads a MongoDB executable. CI runs the same tests and browser regression tests.
 
-## Deploy the backend to Render
+## Deploy the full app to Render
 
-1. Push the repository to GitHub and create a Render Blueprint from `render.yaml`, or create a Node web service with root directory `backend`.
-2. Use build command `npm ci && npm run build` and start command `npm start`.
-3. Set `MONGODB_URI` to an Atlas connection string, `CLIENT_URL` to the final HTTPS frontend origin, and unique JWT secrets. Keep `RESUME_STORAGE_PROVIDER=gridfs`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `EMAIL_FROM` with a verified sender.
-4. Deploy and verify `https://<api-host>/api/v1/health` reports `UP` and `connected`.
+1. Open the Render deploy link above and connect your account to this repository.
+2. Use the included blueprint. It builds both folders and serves the frontend and API from one URL.
+3. Supply an Atlas replica-set `MONGODB_URI`, a Resend `RESEND_API_KEY`, and a verified `EMAIL_FROM`. The blueprint generates JWT secrets and enables GridFS.
+4. Allow the Render service's outbound addresses in Atlas. The app automatically uses `RENDER_EXTERNAL_URL` for frontend links and origin checks; set `CLIENT_URL` explicitly when adding a custom domain.
+5. Verify the root page, `/api/v1/health`, registration/verification, login, and recruiter/candidate workflows before putting the URL on a resume.
 
 Provision the first admin from a trusted terminal with the production backend environment loaded:
 
@@ -89,7 +95,7 @@ $env:ADMIN_FULL_NAME='Platform Administrator'
 npm.cmd run bootstrap:admin
 ```
 
-## Deploy the frontend to Vercel
+## Optional: deploy the frontend separately to Vercel
 
 1. Import the repository and set the root directory to `frontend`.
 2. Vercel detects Vite; build command is `npm run build`, output directory is `dist`.
@@ -113,6 +119,6 @@ npm.cmd run bootstrap:admin
 - Resume extraction is heuristic and intended for text-based PDFs; scanned/image-only or complex layouts can be rejected or sparse.
 - GridFS is deployment-safe but increases database storage usage. Large-scale deployments may substitute a private S3-compatible adapter behind the same storage service.
 - Matching is deterministic keyword/profile comparison, not a hiring decision or semantic AI model.
-- Email verification and password recovery are implemented using SMTP and required for production login. Interview scheduling, SMS, and WebSocket delivery remain future enhancements.
+- Email verification and password recovery support Resend HTTPS and SMTP and required for production login. Interview scheduling, SMS, and WebSocket delivery remain future enhancements.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for SMTP setup, production gates, browser testing, monitoring, backups, restore drills, and rollback. Cloud services still require operator configuration.

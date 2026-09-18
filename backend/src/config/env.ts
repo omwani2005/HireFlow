@@ -6,6 +6,8 @@ dotenv.config();
 const developmentAccessSecret = 'development_jwt_access_secret_min_32_chars_placeholder';
 const developmentRefreshSecret = 'development_jwt_refresh_secret_min_32_chars_placeholder';
 const envSchema = z.object({
+  EMAIL_PROVIDER: z.enum(['smtp', 'resend']).default('smtp'),
+  RESEND_API_KEY: z.string().default(''),
   SMTP_HOST: z.string().default(''),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
   SMTP_USER: z.string().default(''),
@@ -14,7 +16,8 @@ const envSchema = z.object({
   REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CLIENT_URL: z.string().default('http://localhost:5173'),
+  SERVE_FRONTEND: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  CLIENT_URL: z.string().default(process.env.RENDER_EXTERNAL_URL || 'http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/hireflow'),
   JWT_ACCESS_SECRET: z.string().min(32).default(developmentAccessSecret),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
@@ -26,7 +29,7 @@ const envSchema = z.object({
   if (value.NODE_ENV === 'production') {
     const origins = value.CLIENT_URL.split(',').map(origin => origin.trim());
     if (origins.some(origin => { try { const url = new URL(origin); return url.protocol !== 'https:' || url.origin !== origin; } catch { return true; } })) context.addIssue({ code: z.ZodIssueCode.custom, path: ['CLIENT_URL'], message: 'Use exact HTTPS frontend origins without paths or trailing slashes' });
-    if (!value.SMTP_HOST || !value.EMAIL_FROM) context.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_HOST'], message: 'Production requires SMTP_HOST and EMAIL_FROM for account verification and recovery' });
+    if (!value.EMAIL_FROM || (value.EMAIL_PROVIDER === 'smtp' ? !value.SMTP_HOST : !value.RESEND_API_KEY)) context.addIssue({ code: z.ZodIssueCode.custom, path: [value.EMAIL_PROVIDER === 'smtp' ? 'SMTP_HOST' : 'RESEND_API_KEY'], message: 'Production requires EMAIL_FROM and credentials for the selected email provider' });
     if (value.RESUME_STORAGE_PROVIDER !== 'gridfs') context.addIssue({ code: z.ZodIssueCode.custom, path: ['RESUME_STORAGE_PROVIDER'], message: 'Production requires durable GridFS resume storage' });
   }
   if (value.NODE_ENV === 'production' && (value.JWT_ACCESS_SECRET === developmentAccessSecret || value.JWT_REFRESH_SECRET === developmentRefreshSecret || /placeholder/i.test(value.JWT_ACCESS_SECRET + value.JWT_REFRESH_SECRET))) {

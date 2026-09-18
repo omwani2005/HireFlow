@@ -2,14 +2,14 @@
 
 ## Required before publishing
 
-1. Push the repository and require the HireFlow CI check to pass on the release commit.
-2. Provision MongoDB Atlas (or a MongoDB 7+ replica set). Standalone MongoDB is no longer sufficient: application/notification writes, company archiving, and refresh rotation use transactions.
-3. Configure an always-on API service, durable GridFS storage, and SMTP with a verified sender. Set `NODE_ENV=production`, `CLIENT_URL` to the exact HTTPS frontend origin (no trailing slash), `MONGODB_URI`, two different random JWT secrets of at least 32 characters, `RESUME_STORAGE_PROVIDER=gridfs`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `EMAIL_FROM`. Never copy secrets into Git or frontend settings. Production refuses missing SMTP and development secrets.
-4. Prefer `https://app.yourdomain.com` and `https://api.yourdomain.com`. Default Vercel/Render domains make refresh cookies cross-site; verify browser behavior before launch. Use a paid host/plan that permits outbound SMTP. Free Render services may block SMTP ports; select an appropriate plan or implement an HTTPS email-provider adapter.
-5. Deploy the Render blueprint (`backend`, build `npm ci && npm run build`, start `npm start`). Configure Atlas's IP access list for the service's outbound ranges and use a restricted database user.
-6. Deploy Vercel with root `frontend`, build `npm run build`, output `dist`, and `VITE_API_BASE_URL=https://api.yourdomain.com/api/v1`. Redeploy after changing build-time variables.
-7. Bootstrap an administrator from a trusted terminal with production environment variables loaded. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME`, then run `npm run bootstrap:admin`. Remove the temporary admin password afterward. This command resets an existing administrator's password.
-8. Test registration, verification email/resend, login, reload, multiple tabs, recovery, logout, resume replacement/download, company/job creation, applications, stage changes, notification delivery, pagination, archiving, and tenant access restrictions.
+1. The public repository is [omwani2005/HireFlow](https://github.com/omwani2005/HireFlow). Require CI to pass for the release commit.
+2. Provision MongoDB Atlas (or a MongoDB 7+ replica set). Standalone MongoDB is not sufficient: application/notification writes, company archiving, and refresh rotation use transactions.
+3. Connect Render and use [Deploy to Render](https://render.com/deploy?repo=https://github.com/omwani2005/HireFlow). The blueprint selects a free service, waits for CI before automatic deployments, and builds the frontend and backend from the repository root. It starts the API with `SERVE_FRONTEND=true` and builds the frontend with `VITE_API_BASE_URL=/api/v1`, so both use the same HTTPS origin. No Vercel account or custom domain is required for this mode.
+4. Supply `MONGODB_URI`, `RESEND_API_KEY`, and `EMAIL_FROM`. Verify the sending domain in Resend; a testing sender is not sufficient for arbitrary users. The blueprint generates two different JWT secrets, selects GridFS, and sets `EMAIL_PROVIDER=resend`. This HTTPS transport avoids free-host SMTP-port restrictions. SMTP is also supported using `EMAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `EMAIL_FROM` on a host that permits SMTP.
+5. Add the service's outbound IP ranges to Atlas's access list and use a database user restricted to the application database. Production startup rejects missing email configuration, placeholder secrets, and local resume storage. Never put database/email secrets in Git or frontend variables.
+6. `CLIENT_URL` defaults to Render's generated `RENDER_EXTERNAL_URL`. For custom domains, set it to the exact HTTPS frontend origin without a trailing slash. To retain separate Vercel hosting, leave `SERVE_FRONTEND=false` and set Vercel's `VITE_API_BASE_URL` to the API origin plus `/api/v1`; test third-party-cookie restrictions or use related custom domains.
+7. Bootstrap an administrator from a trusted terminal with production environment variables loaded. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME`, then run `npm run bootstrap:admin` in backend. Remove the temporary admin password afterward. This command resets an existing administrator's password.
+8. Test registration, verification email/resend, login, reload, multiple tabs, recovery, logout, resume replacement/download, company/job creation, applications, stage changes, notification delivery, pagination, archiving, and tenant access restrictions. Use the actual healthy frontend URL on a resume; the Render setup link is not a deployed application URL.
 
 ## Verification commands
 
@@ -36,8 +36,10 @@ Record the release commit and deployment identifiers before rollout. Deploy to s
 
 ## Remaining launch decisions
 
-Supply verified SMTP credentials, final domains, hosting access, backup policy and alert destinations. Existing unverified users must use the resend-verification page before production login. New account emails use single-use 30-minute links; password reset invalidates existing access tokens and refresh sessions. Review applicant-data retention/deletion and recruiter approval policies with the operator before open registration. Archiving preserves history; it is not personal-data erasure.
+Supply Render access, verified email-provider credentials, an accessible Atlas database, backup policy and alert destinations. Existing unverified users must use the resend-verification page before production login. New account emails use single-use 30-minute links; password reset invalidates existing access tokens and refresh sessions. Review applicant-data retention/deletion and recruiter approval policies with the operator before open registration. Archiving preserves history; it is not personal-data erasure.
 
 Reference documentation: [SMTP transport](https://nodemailer.com/smtp), [Render free-service limits](https://render.com/docs/free), [Atlas restore procedures](https://www.mongodb.com/docs/atlas/backup/cloud-backup/restore-overview/).
 
-Local verification completed: 37 backend tests (including isolated replica-set integration tests), 5 Chromium browser regression tests, both production builds, and npm production-dependency audits (zero reported vulnerabilities). SMTP delivery and live cloud infrastructure were not tested or activated.
+Local verification completed: 45 backend tests (including isolated replica-set integration tests), 5 Chromium browser regression tests, both production builds, and npm production-dependency audits (zero reported vulnerabilities). Live email delivery and cloud infrastructure have not been activated.
+
+Single-origin hosting uses [Render default variables](https://render.com/docs/environment-variables). HTTPS email delivery follows the [Resend API](https://resend.com/docs/api-reference/emails/send-email).

@@ -1,4 +1,5 @@
 import { AccountService } from './account.service';
+import { isEmailConfigured } from './email.service';
 import { env } from '../config/env';
 import { transaction } from '../utils/transaction';
 import bcrypt from 'bcryptjs';
@@ -50,7 +51,7 @@ export class AuthService {
       },
     });
 
-    if (env.SMTP_HOST) await AccountService.request(user.email, 'verify').catch(() => { console.error(JSON.stringify({ event: 'account_email_failed', purpose: 'verify' })); });
+    if (isEmailConfigured()) await AccountService.request(user.email, 'verify').catch(() => { console.error(JSON.stringify({ event: 'account_email_failed', purpose: 'verify' })); });
     const userObj = user.toObject();
     delete (userObj as any).passwordHash;
     return userObj;

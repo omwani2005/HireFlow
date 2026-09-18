@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,7 +10,7 @@ import { errorHandler } from './middlewares/error.middleware';
 import { AppError } from './utils/AppError';
 import { env } from './config/env';
 
-export const createApp = (): Application => {
+export const createApp = (options: { frontendDirectory?: string } = {}): Application => {
   const app: Application = express();
   if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
@@ -41,18 +43,38 @@ export const createApp = (): Application => {
   app.use(express.json({ limit: '10kb' }));
   app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-  // Root endpoint info
-  app.get('/', (_req: Request, res: Response) => {
-    res.status(200).json({
-      name: 'HireFlow ATS API',
-      version: '1.0.0',
-      status: 'operational',
-      documentation: '/api/v1/health',
+  if (!env.SERVE_FRONTEND) {
+    app.get('/', (_req: Request, res: Response) => {
+      res.status(200).json({
+        name: 'HireFlow ATS API',
+        version: '1.0.0',
+        status: 'operational',
+        documentation: '/api/v1/health',
+      });
     });
-  });
+  }
 
   // Mount API v1 Master Router
   app.use('/api/v1', routes);
+
+  if (env.SERVE_FRONTEND) {
+    // Both backend/src and backend/dist resolve to the same sibling frontend build.
+    const frontendDirectory = options.frontendDirectory || path.resolve(__dirname, '../../frontend/dist');
+    const indexFile = path.join(frontendDirectory, 'index.html');
+    if (!fs.existsSync(indexFile)) throw new Error('Frontend build is missing. Build frontend before enabling SERVE_FRONTEND.');
+
+    const staticFiles = express.static(frontendDirectory, { index: false });
+    app.use((req, res, next) => {
+      // API errors must remain JSON, even when a browser accepts HTML.
+      if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+      return staticFiles(req, res, next);
+    });
+    app.get('*', (req, res, next) => {
+      if (req.path === '/api' || req.path.startsWith('/api/') || req.path.startsWith('/assets/') || path.extname(req.path) || !req.accepts('html')) return next();
+      res.setHeader('Cache-Control', 'no-store');
+      return res.sendFile(indexFile);
+    });
+  }
 
   // Unmatched route 404 handler
   app.all('*', (req: Request, _res: Response, next: NextFunction) => {
