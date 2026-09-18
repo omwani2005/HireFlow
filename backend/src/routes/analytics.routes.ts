@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { getAdminAnalytics, getCandidateAnalytics, getRecruiterAnalytics } from '../controllers/analytics.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/rbac.middleware';
+const router = Router();
+router.use(authenticate);
+router.get('/candidate', authorize('candidate'), getCandidateAnalytics);
+router.get('/recruiter', authorize('recruiter', 'admin'), getRecruiterAnalytics);
+router.get('/admin', authorize('admin'), getAdminAnalytics);
+export default router;

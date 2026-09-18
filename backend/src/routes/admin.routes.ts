@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { listPlatformApplications, listPlatformJobs, listUsers } from '../controllers/admin.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/rbac.middleware';
+import { validateQuery } from '../middlewares/validate.middleware';
+const router = Router();
+router.use(authenticate, authorize('admin'));
+router.get('/users', validateQuery(z.object({ role: z.enum(['candidate', 'recruiter', 'admin']).optional(), page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20) })), listUsers);
+router.get('/jobs', listPlatformJobs);
+router.get('/applications', listPlatformApplications);
+export default router;

@@ -1,0 +1,18 @@
+name: Production health
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions:
+  contents: read
+jobs:
+  health:
+    if: ${{ vars.PRODUCTION_API_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify API readiness
+        env:
+          API_URL: ${{ vars.PRODUCTION_API_URL }}
+        run: |
+          curl --fail --silent --show-error --retry 2 --max-time 30 "$API_URL/api/v1/health" > health.json
+          node -e "const h=require('./health.json'); if(h.data?.status!=='UP'||h.data?.database!=='connected')process.exit(1)"
