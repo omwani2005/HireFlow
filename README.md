@@ -1,9 +1,9 @@
 # HireFlow
 
 [![CI](https://github.com/omwani2005/HireFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/omwani2005/HireFlow/actions/workflows/ci.yml)
-[Deploy the full app on Render](https://render.com/deploy?repo=https://github.com/omwani2005/HireFlow)
+[Deploy the API on Render](https://render.com/deploy?repo=https://github.com/omwani2005/HireFlow)
 
-The default blueprint serves the frontend and API from one Render origin. See [DEPLOYMENT.md](DEPLOYMENT.md) for required database and email settings.
+Deploy the frontend on Vercel, the API on Render, and the database on MongoDB Atlas. See [DEPLOYMENT.md](DEPLOYMENT.md) for the deployment order and required settings.
 
 HireFlow is a production-oriented MERN applicant-tracking system with secure multi-device sessions, candidate and recruiter workflows, tenant isolation, explainable talent matching, notifications, analytics, and focused administration.
 
@@ -24,7 +24,7 @@ HireFlow is a production-oriented MERN applicant-tracking system with secure mul
 
 - Frontend: React 18, Vite, TypeScript, Tailwind CSS, Zustand, Axios, React Router.
 - Backend: Node.js, Express, TypeScript, MongoDB/Mongoose, Zod, JWT, bcrypt, Multer, PDF Parse.
-- Deployment: Render frontend + API on one origin, MongoDB Atlas/GridFS; optional separate Vercel frontend.
+- Deployment: Vercel frontend, Render API, and MongoDB Atlas/GridFS.
 
 ## Local setup
 
@@ -59,7 +59,7 @@ Backend variables are listed in `backend/.env.example`:
 
 Production startup rejects placeholder/equal JWT secrets. Use `gridfs` on ephemeral hosts; resume bytes remain private in MongoDB and are only streamed through the authorized API.
 
-Frontend uses `VITE_API_BASE_URL`, for example `https://your-api.onrender.com/api/v1`. Vite variables are public, so never put secrets in the frontend environment.
+Frontend uses `VITE_API_BASE_URL=/api/v1`. On Vercel, set `BACKEND_URL` to the Render HTTPS origin; `frontend/vercel.mjs` forwards API requests to it. Vite variables are public, so never put secrets in them.
 
 No external AI key is required. Matching is deterministic and remains available without a third-party provider.
 
@@ -78,13 +78,14 @@ npm.cmd run build
 
 `npm test` provisions and removes an isolated local MongoDB replica set automatically; it never uses the application database. The first run downloads a MongoDB executable. CI runs the same tests and browser regression tests.
 
-## Deploy the full app to Render
+## Deploy to Vercel, Render, and Atlas
 
-1. Open the Render deploy link above and connect your account to this repository.
-2. Use the included blueprint. It builds both folders and serves the frontend and API from one URL.
-3. Supply an Atlas replica-set `MONGODB_URI`, a Resend `RESEND_API_KEY`, and a verified `EMAIL_FROM`. The blueprint generates JWT secrets and enables GridFS.
-4. Allow the Render service's outbound addresses in Atlas. The app automatically uses `RENDER_EXTERNAL_URL` for frontend links and origin checks; set `CLIENT_URL` explicitly when adding a custom domain.
-5. Verify the root page, `/api/v1/health`, registration/verification, login, and recruiter/candidate workflows before putting the URL on a resume.
+1. Create or reuse an Atlas cluster and a database user restricted to the application database.
+2. Import this repository into Vercel with root directory `frontend` and select Node.js 22. Note the assigned production domain before deploying.
+3. Open the Render deploy link above. The blueprint builds only `backend`. Set `CLIENT_URL` to the Vercel HTTPS origin, `MONGODB_URI` to the Atlas connection string, and supply a Resend `RESEND_API_KEY` and verified `EMAIL_FROM`. JWT secrets are generated and resume storage uses GridFS.
+4. Allow the Render service's outbound addresses in Atlas and verify `https://<render-service>/api/v1/health` returns HTTP 200.
+5. Set Vercel `BACKEND_URL=https://<render-service>` and `VITE_API_BASE_URL=/api/v1`, then deploy. API requests pass through Vercel to Render, keeping refresh cookies on the frontend origin.
+6. Verify registration/verification, login, reload, resume upload/download, and recruiter/candidate workflows on the Vercel URL.
 
 Provision the first admin from a trusted terminal with the production backend environment loaded:
 
@@ -95,14 +96,7 @@ $env:ADMIN_FULL_NAME='Platform Administrator'
 npm.cmd run bootstrap:admin
 ```
 
-## Optional: deploy the frontend separately to Vercel
-
-1. Import the repository and set the root directory to `frontend`.
-2. Vercel detects Vite; build command is `npm run build`, output directory is `dist`.
-3. Set `VITE_API_BASE_URL=https://<api-host>/api/v1`.
-4. Deploy, then update backend `CLIENT_URL` to the exact HTTPS Vercel URL and redeploy the backend.
-
-`frontend/vercel.json` supplies the SPA fallback. API routing is environment-driven and contains no hard-coded deployment hostname.
+`frontend/vercel.mjs` supplies the API proxy and SPA fallback. Vercel configuration requires `BACKEND_URL`; local Vite development does not. When the Vercel production domain changes, update Render `CLIENT_URL` as well. Preview deployments need an explicitly allowed origin and should use a staging backend/database.
 
 ## Post-deployment checklist
 

@@ -33,3 +33,4 @@ private-uploads/
 .mongodb-binaries/
 playwright-report/
 test-results/
+.vercel/

@@ -1,11 +1,12 @@
 services:
   - type: web
-    name: hireflow
+    name: hireflow-api
     runtime: node
+    rootDir: backend
     plan: free
     autoDeployTrigger: checksPass
-    buildCommand: npm ci --include=dev --prefix backend && npm run build --prefix backend && npm ci --include=dev --prefix frontend && VITE_API_BASE_URL=/api/v1 npm run build --prefix frontend
-    startCommand: npm start --prefix backend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
@@ -13,7 +14,9 @@ services:
       - key: NODE_VERSION
         value: 22
       - key: SERVE_FRONTEND
-        value: 'true'
+        value: 'false'
+      - key: CLIENT_URL
+        sync: false
       - key: MONGOMS_DISABLE_POSTINSTALL
         value: '1'
       - key: MONGODB_URI
